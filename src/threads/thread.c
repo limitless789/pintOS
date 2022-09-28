@@ -591,7 +591,7 @@ void thread_sleep(int64_t awake_tick)
 {
   //not implemented yet
 }
-void thread_awake(void)
+void thread_awake(int64_t ticks)
 {
   //not implemented yet
 }
