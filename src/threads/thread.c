@@ -604,8 +604,7 @@ bool less_awake_tick(struct list_elem elem, struct list_elem e, void *aux)
 
 /* Get awake_tick and set the current thread's awake_tick.
    Disable interrupt and insert the thread to sleep_list with the order of awake_tick.
-   And then schedule.
-*/
+   And then schedule. */
 void thread_sleep(int64_t awake_tick)
 {
   struct thread *cur = thread_current ();
@@ -623,7 +622,25 @@ void thread_sleep(int64_t awake_tick)
   schedule ();
   intr_set_level (old_level);
 }
+
+/* Called by timer interrupt and check the given ticks and that value of front of sleep list,
+   which is the thread which awake_tick is minimum, 
+   if enough ticks are passed, wake up the thread and push it to ready list. */
 void thread_awake(int64_t ticks)
 {
-  //not implemented yet
+  enum intr_level old_level;
+  old_level = intr_disable ();
+
+  struct thread *t = list_entry(list_front(&sleep_list), struct thread, elem);
+  while(t->awake_ticks <= ticks)
+  {
+    list_push_back (&ready_list, &t->elem);
+    t->status = THREAD_READY;
+    t->awake_ticks = 0;
+    if(list_empty(&sleep_list))
+      break;
+    t = list_entry(list_front(&sleep_list), struct thread, elem);
+  }
+
+  intr_set_level (old_level);
 }
