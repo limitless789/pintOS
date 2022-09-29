@@ -96,6 +96,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleep_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -467,6 +468,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->awake_ticks=0;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -587,9 +589,39 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
+/* return true when thread that has elem as list_elem has less awake_tick
+   than thread that has e as list_elem */
+bool less_awake_tick(struct list_elem elem, struct list_elem e, void *aux)
+{
+  struct thread *t1 = list_entry(&elem, struct thread, elem);
+  struct thread *t2 = list_entry(&e, struct thread, elem);
+
+  ASSERT(t1->awake_ticks!=0);
+  ASSERT(t2->awake_ticks!=0);
+
+  return t1->awake_ticks < t2->awake_ticks;
+}
+
+/* Get awake_tick and set the current thread's awake_tick.
+   Disable interrupt and insert the thread to sleep_list with the order of awake_tick.
+   And then schedule.
+*/
 void thread_sleep(int64_t awake_tick)
 {
-  //not implemented yet
+  struct thread *cur = thread_current ();
+  enum intr_level old_level;
+  
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+  if (cur != idle_thread) 
+    {
+      cur->awake_ticks = awake_tick;
+      list_insert_ordered (&sleep_list, &cur->elem, &less_awake_tick, &awake_tick);
+    }
+  cur->status = THREAD_SLEEP;
+  schedule ();
+  intr_set_level (old_level);
 }
 void thread_awake(int64_t ticks)
 {
