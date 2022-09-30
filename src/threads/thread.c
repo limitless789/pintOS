@@ -591,15 +591,15 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 /* return true when thread that has elem as list_elem has less awake_tick
    than thread that has e as list_elem */
-bool less_awake_tick(struct list_elem elem, struct list_elem e, void *aux)
+bool less_awake_tick(struct list_elem *elem, struct list_elem *e, void *aux)
 {
-  struct thread *t1 = list_entry(&elem, struct thread, elem);
-  struct thread *t2 = list_entry(&e, struct thread, elem);
+  struct thread *t1 = list_entry(elem, struct thread, elem);
+  struct thread *t2 = list_entry(e, struct thread, elem);
 
   ASSERT(t1->awake_ticks!=0);
   ASSERT(t2->awake_ticks!=0);
 
-  return t1->awake_ticks < t2->awake_ticks;
+  return (t1->awake_ticks < t2->awake_ticks);
 }
 
 /* Get awake_tick and set the current thread's awake_tick.
@@ -633,14 +633,17 @@ void thread_awake(int64_t ticks)
 
   enum intr_level old_level;
   old_level = intr_disable ();
+
   struct thread *t = list_entry(list_front(&sleep_list), struct thread, elem);
+
   while(t->awake_ticks <= ticks)
   {
-    printf("hello\n");
+    ASSERT (t->status == THREAD_SLEEP);
     list_pop_front(&sleep_list);
     list_push_back (&ready_list, &t->elem);
     t->status = THREAD_READY;
     t->awake_ticks = 0;
+    
     if(list_empty(&sleep_list))
       break;
     t = list_entry(list_front(&sleep_list), struct thread, elem);
