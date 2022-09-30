@@ -630,13 +630,13 @@ void thread_awake(int64_t ticks)
 {
   if(list_empty(&sleep_list))
     return;
-    
+
   enum intr_level old_level;
   old_level = intr_disable ();
-  
   struct thread *t = list_entry(list_front(&sleep_list), struct thread, elem);
   while(t->awake_ticks <= ticks)
   {
+    list_pop_front(&sleep_list);
     list_push_back (&ready_list, &t->elem);
     t->status = THREAD_READY;
     t->awake_ticks = 0;
