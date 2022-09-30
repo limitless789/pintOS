@@ -628,10 +628,12 @@ void thread_sleep(int64_t awake_tick)
    if enough ticks are passed, wake up the thread and push it to ready list. */
 void thread_awake(int64_t ticks)
 {
-  enum intr_level old_level;
-  old_level = intr_disable ();
   if(list_empty(&sleep_list))
     return;
+    
+  enum intr_level old_level;
+  old_level = intr_disable ();
+  
   struct thread *t = list_entry(list_front(&sleep_list), struct thread, elem);
   while(t->awake_ticks <= ticks)
   {
