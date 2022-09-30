@@ -636,6 +636,7 @@ void thread_awake(int64_t ticks)
   struct thread *t = list_entry(list_front(&sleep_list), struct thread, elem);
   while(t->awake_ticks <= ticks)
   {
+    printf("hello\n");
     list_pop_front(&sleep_list);
     list_push_back (&ready_list, &t->elem);
     t->status = THREAD_READY;
