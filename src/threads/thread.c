@@ -630,7 +630,8 @@ void thread_awake(int64_t ticks)
 {
   enum intr_level old_level;
   old_level = intr_disable ();
-
+  if(list_empty(&sleep_list))
+    return;
   struct thread *t = list_entry(list_front(&sleep_list), struct thread, elem);
   while(t->awake_ticks <= ticks)
   {
