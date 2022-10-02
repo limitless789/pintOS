@@ -589,8 +589,8 @@ allocate_tid (void)
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-/* return true when thread that has elem as list_elem has less awake_tick
-   than thread that has e as list_elem */
+/* return true when the thread that has elem as list_elem has smaller awake_tick
+   than the thread that has e as list_elem */
 bool less_awake_tick(struct list_elem *elem, struct list_elem *e, void *aux)
 {
   struct thread *t1 = list_entry(elem, struct thread, elem);
@@ -603,7 +603,7 @@ bool less_awake_tick(struct list_elem *elem, struct list_elem *e, void *aux)
 }
 
 /* Get awake_tick and set the current thread's awake_tick.
-   Disable interrupt and insert the thread to sleep_list with the order of awake_tick.
+   Disable interrupt and insert the thread to sleep_list with the ascending order of awake_tick.
    And then schedule. */
 void thread_sleep(int64_t awake_tick)
 {
@@ -623,9 +623,9 @@ void thread_sleep(int64_t awake_tick)
   intr_set_level (old_level);
 }
 
-/* Called by timer interrupt and check the given ticks and that value of front of sleep list,
+/* Called by timer interrupt and check the given ticks and front of sleep_list,
    which is the thread which awake_tick is minimum, 
-   if enough ticks are passed, wake up the thread and push it to ready list. */
+   if enough ticks have passed, wake the thread up and push it to end of ready_list*/
 void thread_awake(int64_t ticks)
 {
   if(list_empty(&sleep_list))
