@@ -242,7 +242,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &t->elem, &less_priority, &t->priority);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -313,7 +313,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, &less_priority, &cur->priority);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -602,6 +602,19 @@ bool less_awake_tick(struct list_elem *elem, struct list_elem *e, void *aux)
   return (t1->awake_ticks < t2->awake_ticks);
 }
 
+/* return true when the thread that has elem as list_elem has smaller priority
+   than the thread that has e as list_elem */
+bool less_priority(struct list_elem *elem, struct list_elem *e, void *aux)
+{
+  struct thread *t1 = list_entry(elem, struct thread, elem);
+  struct thread *t2 = list_entry(e, struct thread, elem);
+
+  ASSERT(is_thread(t1));
+  ASSERT(is_thread(t2));
+
+  return (t1->priority < t2->priority);
+}
+
 /* Get awake_tick and set the current thread's awake_tick.
    Disable interrupt and insert the thread to sleep_list with the ascending order of awake_tick.
    And then schedule. */
@@ -640,7 +653,7 @@ void thread_awake(int64_t ticks)
   {
     ASSERT (t->status == THREAD_SLEEP);
     list_pop_front(&sleep_list);
-    list_push_back (&ready_list, &t->elem);
+    list_insert_ordered (&ready_list, &t->elem, &less_priority, &t->priority);
     t->status = THREAD_READY;
     t->awake_ticks = 0;
     
