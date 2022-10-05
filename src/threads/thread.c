@@ -24,6 +24,10 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* List of processes in THREAD_SLEEP state, that is, processes
+   that are sleeping due to scheduler and timer. */
+static struct list sleep_list;
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -92,6 +96,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleep_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -463,6 +468,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->awake_ticks=0;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -582,3 +588,66 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+/* return true when the thread that has elem as list_elem has smaller awake_tick
+   than the thread that has e as list_elem */
+bool less_awake_tick(struct list_elem *elem, struct list_elem *e, void *aux)
+{
+  struct thread *t1 = list_entry(elem, struct thread, elem);
+  struct thread *t2 = list_entry(e, struct thread, elem);
+
+  ASSERT(t1->awake_ticks!=0);
+  ASSERT(t2->awake_ticks!=0);
+
+  return (t1->awake_ticks < t2->awake_ticks);
+}
+
+/* Get awake_tick and set the current thread's awake_tick.
+   Disable interrupt and insert the thread to sleep_list with the ascending order of awake_tick.
+   And then schedule. */
+void thread_sleep(int64_t awake_tick)
+{
+  struct thread *cur = thread_current ();
+  enum intr_level old_level;
+  
+  ASSERT (!intr_context ());
+
+  old_level = intr_disable ();
+  if (cur != idle_thread) 
+    {
+      cur->awake_ticks = awake_tick;
+      list_insert_ordered (&sleep_list, &cur->elem, &less_awake_tick, &awake_tick);
+    }
+  cur->status = THREAD_SLEEP;
+  schedule ();
+  intr_set_level (old_level);
+}
+
+/* Called by timer interrupt and check the given ticks and front of sleep_list,
+   which is the thread which awake_tick is minimum, 
+   if enough ticks have passed, wake the thread up and push it to end of ready_list*/
+void thread_awake(int64_t ticks)
+{
+  if(list_empty(&sleep_list))
+    return;
+
+  enum intr_level old_level;
+  old_level = intr_disable ();
+
+  struct thread *t = list_entry(list_front(&sleep_list), struct thread, elem);
+
+  while(t->awake_ticks <= ticks)
+  {
+    ASSERT (t->status == THREAD_SLEEP);
+    list_pop_front(&sleep_list);
+    list_push_back (&ready_list, &t->elem);
+    t->status = THREAD_READY;
+    t->awake_ticks = 0;
+    
+    if(list_empty(&sleep_list))
+      break;
+    t = list_entry(list_front(&sleep_list), struct thread, elem);
+  }
+
+  intr_set_level (old_level);
+}
