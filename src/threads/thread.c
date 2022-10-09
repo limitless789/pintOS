@@ -791,6 +791,10 @@ void mlfqs_priority(struct thread* t)
         int a = div_mixed(t->recent_cpu, 4);
         int tmp = sub_mixed(add_mixed(a, t->nice * 2), (int)PRI_MAX);
         int result = fp_to_int_round(sub_fp(0, tmp));
+        if (result < PRI_MIN)
+            result = PRI_MIN;
+        else if (result > PRI_MAX)
+            result = PRI_MAX;
         t->priority = result;
         return;
     }
