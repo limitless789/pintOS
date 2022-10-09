@@ -387,7 +387,7 @@ int
 thread_get_load_avg (void) 
 {
     enum intr_level old_level = intr_disable();
-    int tmp_load_avg = fp_to_int(mult_mixed(load_avg, 100));
+    int tmp_load_avg = fp_to_int_round(mult_mixed(load_avg, 100));
     intr_set_level(old_level);
     return tmp_load_avg;
 }
@@ -397,7 +397,7 @@ int
 thread_get_recent_cpu (void) 
 {
     enum intr_level old_level = intr_disable();
-    int tmp_recent_cpu = fp_to_int(mult_mixed(thread_current()->recent_cpu, 100));
+    int tmp_recent_cpu = fp_to_int_round(mult_mixed(thread_current()->recent_cpu, 100));
     intr_set_level(old_level);
     return tmp_recent_cpu;
 }
@@ -493,8 +493,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->init_priority = priority;
   t->wait_on_lock = NULL;
   list_init(&t->donations);
-  t->nice = NICE_DEFAULT;
-  t->recent_cpu = RECENT_CPU_DEFAULT;
+  t->nice = running_thread()->nice;
+  t->recent_cpu = running_thread()->recent_cpu;
 
 
   old_level = intr_disable ();
@@ -790,7 +790,7 @@ void mlfqs_priority(struct thread* t)
     {
         int a = div_mixed(t->recent_cpu, 4);
         int tmp = sub_mixed(add_mixed(a, t->nice * 2), (int)PRI_MAX);
-        int result = fp_to_int(sub_fp(0, tmp));
+        int result = fp_to_int_round(sub_fp(0, tmp));
         t->priority = result;
         return;
     }
