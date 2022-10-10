@@ -25,6 +25,11 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* Mlfqs */
+#define NICE_DEFAULT 0
+#define RECENT_CPU_DEFAULT 0
+#define LOAD_AVG_DEFAULT 0
+
 /* A kernel thread or user process.
 
    Each thread structure is stored in its own 4 kB page.  The
@@ -93,8 +98,17 @@ struct thread
 
     int64_t awake_ticks;                 /* tick that sleeping thread will wake up at*/
 
+    int init_priority;
+    struct lock* wait_on_lock;
+    struct list donations;
+    struct list_elem donation_elem;      /* for priority donation */
+
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+
+    int nice;
+    int recent_cpu; /* for mlfqs */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -144,7 +158,30 @@ void thread_sleep(int64_t awake_tick);
 void thread_awake(int64_t ticks);
 
 bool cmp_priority(const struct list_elem* a, const struct list_elem* b, void* aux UNUSED);
+bool cmp_don_priority(const struct list_elem* a, const struct list_elem* n, void* aux UNUSED);
 
+void thread_donate(void);
+void remove_lock_donator(struct lock* lock);
+void refresh_priority(void);
 
+void test_after_semaup(void);
 
+int int_to_fp(int n);
+int fp_to_int(int x);
+int fp_to_int_round(int x);
+int add_fp(int x, int y);
+int sub_fp(int x, int y);
+int add_mixed(int x, int n);
+int sub_mixed(int x, int n);
+int mult_fp(int x, int y);
+int mult_mixed(int x, int n);
+int div_fp(int x, int y);
+int div_mixed(int x, int n);
+
+void mlfqs_priority(struct thread *t);
+void mlfqs_recent_cpu(struct thread *t);
+void mlfqs_load_avg(void);
+void mlfqs_increment(void);
+void mlfqs_recalc_recent_cpu(void);
+void mlfqs_recalc_priority(void);
 #endif /* threads/thread.h */
