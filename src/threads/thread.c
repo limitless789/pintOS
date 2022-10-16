@@ -856,5 +856,3 @@ void test_after_semaup(void)
     if (!list_empty(&ready_list) && (thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority))
         thread_yield();
 }
-
-// push 되는지 확인
