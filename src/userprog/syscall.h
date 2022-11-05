@@ -1,16 +1,14 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
 
+struct lock file_lock;
+
 void syscall_init (void);
 void check_address(void* address);
-void get_argument(void *esp, void *arg, int count);
 void halt(void);
 void exit(int status);
 pit_t exec(const char* cmd_lines);
-tid_t process_execute(const char *filename);
 int wait(pid_t pid);
-int process_wait(tid_t child_tid);
-void process_exit(void);
 bool create(const char *file, unsigned initial_size);
 bool remove(const char *file);
 int open(const char* file);

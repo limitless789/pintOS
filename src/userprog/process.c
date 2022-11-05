@@ -29,7 +29,16 @@ tid_t
 process_execute (const char *file_name) 
 {
   char *fn_copy;
+  int i, count;
   tid_t tid;
+  count = 0;
+  char* cmd_name;
+
+  for (i = 0; file_name[i] != ' ' && file_name[i] != '\0'; i++)
+    ;
+  cmd_name = (char*)malloc(sizeof(char)*(i + 1));
+  strlcpy(cmd_name, file_name, i + 1);
+  cmd_name[i] = '\0';
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -37,11 +46,23 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+  if(filesys_open(cmd_name) == NULL)
+    return -1;
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
+  sema_down(&thread_current()->exe_child);
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (fn_copy);
+  struct list_elem* elem;
+  struct thread* tmp;
+  for(elem = list_begin(&thread_current()->child_thread); elem != list_end(&thead_current()->child_thread); elem = list_next(elem))
+  {
+    tmp = list_entry(elem, struct thread, child_thread_elem);
+    if(tmp->flag == 1)
+      return process_wait(tid);
+  }
+  free(cmd_name);
   return tid;
 }
 
@@ -53,18 +74,33 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+  
+  int i;
+  char tmp[128];
+  for(i = 0; file_name[i] != ' ' && file_name[i] != '\0'; i++)
+    tmp[i] = file_name[i];
+  tmp[i] = '\0';
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (tmp, &if_.eip, &if_.esp);
+
+  sema_up(&thread_current()->parent->exe_child);
+  if(success)
+  {
+    esp_stack(file_name, &if_.esp);
+  }
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
-    thread_exit ();
+  {
+    thread_current()->flag = 1;
+    exit(-1);
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -86,8 +122,24 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait(tid_t child_tid)
 {
+  int exit_status;
+  struct thread* cur = thread_current();
+  struct thread* cur_thread;
+  struct list_elem* tmp;
+  for(tmp = list_begin(&cur->child_thread); tmp == list_end(&cur->child_thread); tmp = list_next(tmp))
+  {
+    cur_thread = list_empty(tmp, struct thread, child_thread_elem);
+    if(child_tid == cur_thread->tid)
+    {
+      sema_down(&(cur_thread->memory_preserve));
+      exit_status = cur_thread->child_exit_status;
+      list_remove(&(cur_thread->child_thread_elem));
+      sema_up(&(cur_thread->child_thread_lock));
+      return exit_status;
+    }
+  }
   return -1;
 }
 
@@ -114,6 +166,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  sema_up(&(cur->memory_preserve));
+  sema_down(&(cur->child_thread_lock));
 }
 
 /* Sets up the CPU for running user code in the current
@@ -201,7 +255,7 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
                           uint32_t read_bytes, uint32_t zero_bytes,
                           bool writable);
 
-/* Loads an ELF executable from FILE_NAME into the current thread.
+/* 
    Stores the executable's entry point into *EIP
    and its initial stack pointer into *ESP.
    Returns true if successful, false otherwise. */
