@@ -113,6 +113,15 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    struct semaphore child_thread_lock;
+    struct semaphore memory_preserve;
+    struct list child_thread;
+    struct list_elem child_thread_elem;
+    int child_exit_status;
+    struct file* file_descriptor[128];
+    struct thread* parent;
+    struct semaphore exe_child;
+    int flag;
 #endif
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
