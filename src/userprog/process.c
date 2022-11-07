@@ -56,7 +56,7 @@ process_execute (const char *file_name)
     palloc_free_page (fn_copy);
   struct list_elem* elem;
   struct thread* tmp;
-  for(elem = list_begin(&thread_current()->child_thread); elem != list_end(&thead_current()->child_thread); elem = list_next(elem))
+  for(elem = list_begin(&(thread_current()->child_thread)); elem != list_end(&(thread_current()->child_thread)); elem = list_next(elem))
   {
     tmp = list_entry(elem, struct thread, child_thread_elem);
     if(tmp->flag == 1)
@@ -91,7 +91,7 @@ start_process (void *file_name_)
   sema_up(&thread_current()->parent->exe_child);
   if(success)
   {
-    esp_stack(file_name, &if_.esp);
+    //esp_stack(file_name, &if_.esp);
   }
 
   /* If load failed, quit. */
@@ -130,7 +130,7 @@ process_wait(tid_t child_tid)
   struct list_elem* tmp;
   for(tmp = list_begin(&cur->child_thread); tmp == list_end(&cur->child_thread); tmp = list_next(tmp))
   {
-    cur_thread = list_empty(tmp, struct thread, child_thread_elem);
+    cur_thread = list_entry(tmp, struct thread, child_thread_elem);
     if(child_tid == cur_thread->tid)
     {
       sema_down(&(cur_thread->memory_preserve));

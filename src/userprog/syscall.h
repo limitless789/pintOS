@@ -1,5 +1,7 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
+#include "../threads/thread.h"
+#include "../filesys/file.h"
 
 struct lock file_lock;
 
@@ -7,10 +9,10 @@ void syscall_init (void);
 void check_address(void* address);
 void halt(void);
 void exit(int status);
-pit_t exec(const char* cmd_lines);
+pid_t exec(const char* cmd_lines);
 int wait(pid_t pid);
-bool create(const char *file, unsigned initial_size);
-bool remove(const char *file);
+int create(const char *file, unsigned initial_size);
+int remove(const char *file);
 int open(const char* file);
 int filesize(int fd);
 int read(int fd, void* buffer, unsigned size);

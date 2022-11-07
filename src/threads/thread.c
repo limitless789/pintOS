@@ -209,7 +209,12 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
   if (!list_empty(&ready_list) && (thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority))
-      thread_yield();
+      {
+      if(!intr_context())
+        thread_yield();
+      else
+        intr_yield_on_return();
+    }
   return tid;
 }
 
@@ -866,5 +871,10 @@ void mlfqs_recalc_priority(void)
 void test_after_semaup(void)
 {
     if (!list_empty(&ready_list) && (thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority))
+    {
+      if(!intr_context())
         thread_yield();
+      else
+        intr_yield_on_return();
+    }
 }

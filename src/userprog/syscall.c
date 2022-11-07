@@ -60,7 +60,7 @@ syscall_handler (struct intr_frame *f)
       check_address(f->esp + 4);
       check_address(f->esp + 8);
       check_address(f->esp + 12);
-      f->eax = write((int)*(uint32_t*)(f->esp + 4), (void*)*(uint32_t*)(f->esp + 8), (unsigned)*(uint32_t*)(f->esp + 12);
+      f->eax = write((int)*(uint32_t*)(f->esp + 4), (void*)*(uint32_t*)(f->esp + 8), (unsigned)*(uint32_t*)(f->esp + 12));
       break;
     case SYS_SEEK:
       check_address(f->esp + 4);
@@ -80,7 +80,7 @@ syscall_handler (struct intr_frame *f)
 
 void check_address(void* address)
 {
-  if(is_kernel_vaddr(address))
+  //if(is_kernel_vaddr(address))
     exit(-1);
 }
 
@@ -105,7 +105,7 @@ void exit(int status)
       close(i);
   struct thread* tmp_thread;
   struct list_elem* tmp_elem;
-  for(tmp_elem = list_begin(&thread_currnet()->child_thread); tmp_elem != list_end(&thread_current()->child_thread); tmp_elem = list_next(tmp_elem))
+  for(tmp_elem = list_begin(&(thread_current()->child_thread)); tmp_elem != list_end(&(thread_current()->child_thread)); tmp_elem = list_next(tmp_elem))
   {
     tmp_thread = list_entry(tmp_elem, struct thread, child_thread_elem);
     process_wait(tmp_thread->tid);
@@ -113,7 +113,7 @@ void exit(int status)
   thread_exit();
 }
 
-pit_t exec(const char* cmd_lines)
+pid_t exec(const char* cmd_lines)
 {
   struct file *file = NULL;
   int i;
@@ -136,7 +136,7 @@ int wait(pid_t pid)
   return process_wait((tid_t)pid);
 }
 
-bool create(const char *file, unsigned initial_size)
+int create(const char *file, unsigned initial_size)
 {
   if(file == NULL)
     exit(-1);
@@ -144,7 +144,7 @@ bool create(const char *file, unsigned initial_size)
   return filesys_create(file, initial_size);
 }
 
-bool remove(const char *file)
+int remove(const char *file)
 {
   if(file == NULL)
     exit(-1);
