@@ -3,7 +3,9 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
-
+#include "threads/vaddr.h"
+#include "userprog/process.h"
+#include "filesys/filesys.h"
 static void syscall_handler (struct intr_frame *);
 
 void
@@ -80,7 +82,7 @@ syscall_handler (struct intr_frame *f)
 
 void check_address(void* address)
 {
-  //if(is_kernel_vaddr(address))
+  if(is_kernel_vaddr(address))
     exit(-1);
 }
 
@@ -96,7 +98,7 @@ void exit(int status)
   int i;
   for(i = 0; (cur->name)[i] != ' ' && (cur->name)[i] != '\0'; i++)
     filename[i] = (cur->name)[i];
-  filename[i] = '0';
+  filename[i] = '\0';
   printf("%s: exit(%d)\n", filename, status);
   cur->child_exit_status = status;
   struct thread* current_thread = thread_current();
@@ -105,6 +107,7 @@ void exit(int status)
       close(i);
   struct thread* tmp_thread;
   struct list_elem* tmp_elem;
+  
   for(tmp_elem = list_begin(&(thread_current()->child_thread)); tmp_elem != list_end(&(thread_current()->child_thread)); tmp_elem = list_next(tmp_elem))
   {
     tmp_thread = list_entry(tmp_elem, struct thread, child_thread_elem);

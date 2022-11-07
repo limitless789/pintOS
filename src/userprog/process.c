@@ -65,7 +65,6 @@ process_execute (const char *file_name)
   int i, count;
   tid_t tid;
   char* cmd_name;
-
   for (i = 0; file_name[i] != ' ' && file_name[i] != '\0'; i++)
     ;
   cmd_name = (char*)malloc(sizeof(char)*(i + 1));
@@ -77,7 +76,7 @@ process_execute (const char *file_name)
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy(fn_copy, file_name, PGSIZE);
   if(filesys_open(cmd_name) == NULL)
     return -1;
 
@@ -130,7 +129,6 @@ start_process (void *file_name_)
   {
     esp_stack(tmp, cnt, &if_);
   }
-
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
@@ -309,7 +307,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
   /* Allocate and activate page directory. */
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
-    goto done;
+    {
+      goto done;
+    }
   process_activate ();
 
   /* Open executable file. */
@@ -398,7 +398,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
-
   success = true;
 
  done:
