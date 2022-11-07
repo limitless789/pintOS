@@ -1,4 +1,4 @@
-#include "userprog/process.h"
+#include "process.h"
 #include <debug.h>
 #include <inttypes.h>
 #include <round.h>
@@ -25,13 +25,45 @@ static bool load (const char *cmdline, void (**eip) (void), void **esp);
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
+
+void esp_stack(char **tmp, int cnt, struct intr_frame* if_)
+{
+  int i, j=0, k=0;
+  char *adr[128];
+  for(i=cnt-1; i>=0; i--)
+  {
+    int l=strlen(tmp[i])+1;
+    if_->esp-=l;
+    memcpy(if_->esp, tmp[i], l);
+    adr[j]=(char *)if_->esp;
+    k+=l;
+  }
+  while(k % 4 != 0)
+  {
+    if_->esp-=1;
+    *(char *)(if_->esp)=0;
+    k++;
+  }
+  if_->esp-=4;
+  memset(if_->esp, 0, 4);
+  for(i=0; i<j; i++)
+  {
+    if_->esp-=4;
+    memcpy(if_->esp, &adr[i], 4);
+  }
+  if_->esp-=4;
+  memset(if_->esp, cnt, 1);
+  if_->esp-=4;
+  memset(if_->esp, 0, 4);
+}
+
+
 tid_t
 process_execute (const char *file_name) 
 {
   char *fn_copy;
   int i, count;
   tid_t tid;
-  count = 0;
   char* cmd_name;
 
   for (i = 0; file_name[i] != ' ' && file_name[i] != '\0'; i++)
@@ -75,23 +107,28 @@ start_process (void *file_name_)
   struct intr_frame if_;
   bool success;
   
-  int i;
-  char tmp[128];
-  for(i = 0; file_name[i] != ' ' && file_name[i] != '\0'; i++)
-    tmp[i] = file_name[i];
-  tmp[i] = '\0';
+  int i=0, cnt=0;
+  char *tmp[128];
+  char *ptr, *save_ptr;
+  ptr=strtok_r(file_name, " ", &save_ptr);
+  while(ptr)
+  {
+    tmp[cnt]=ptr;
+    ptr=strtok_r(NULL, " ", &save_ptr);
+    cnt++;
+  }
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (tmp, &if_.eip, &if_.esp);
+  success = load (file_name, &if_.eip, &if_.esp);
 
   sema_up(&thread_current()->parent->exe_child);
   if(success)
   {
-    //esp_stack(file_name, &if_.esp);
+    esp_stack(tmp, cnt, &if_);
   }
 
   /* If load failed, quit. */
