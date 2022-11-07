@@ -21,6 +21,37 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+void esp_stack(char **tmp, int cnt, struct intr_frame* if_)
+{
+  int i, j=0, k=0;
+  char *adr[128];
+  for(i=cnt-1; i>=0; i--)
+  {
+    int l=strlen(tmp[i])+1;
+    if_->esp-=l;
+    memcpy(if_->esp, tmp[i], l);
+    adr[j++]=(char *)if_->esp;
+    k+=l;
+  }
+  while(k % 4 != 0)
+  {
+    if_->esp-=1;
+    *(char *)(if_->esp)=0;
+    k++;
+  }
+  if_->esp-=8;
+  memset(if_->esp, 0, 8);
+  for(i=0; i<cnt; i++)
+  {
+    if_->esp-=sizeof(char**);
+    memcpy(if_->esp, &adr[i], sizeof(char**));
+  }
+  if_->esp-=4;
+  memset(if_->esp, cnt, 1);
+  if_->esp-=4;
+  memset(if_->esp, 0, 4);
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -30,7 +61,6 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
-
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -38,8 +68,14 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+
+  int i, count;
+  char* cmd_name, save_ptr;
+  cmd_name=strtok_r(file_name, " ", &save_ptr);
+
+  
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -51,16 +87,35 @@ static void
 start_process (void *file_name_)
 {
   char *file_name = file_name_;
+  char *fn=file_name;
   struct intr_frame if_;
   bool success;
-
+  
+  int i=0, cnt=0;
+  char *tmp[128];
+  char *ptr, *save_ptr;
+  ptr=strtok_r(fn, " ", &save_ptr);
+  char *first;
+  first=ptr;
+  while(ptr)
+  {
+    tmp[cnt]=ptr;
+    ptr=strtok_r(NULL, " ", &save_ptr);
+    cnt++;
+  }
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (first, &if_.eip, &if_.esp);
 
+  if(success)
+  {
+    printf("hello\n");
+    esp_stack(tmp, cnt, &if_);
+  }
+  hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
@@ -86,10 +141,27 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait(tid_t child_tid)
 {
+  int exit_status;
+  struct thread* cur = thread_current();
+  struct thread* cur_thread;
+  struct list_elem* tmp;
+  for(tmp = list_begin(&(cur->child_thread)); tmp == list_end(&(cur->child_thread)); tmp = list_next(tmp))
+  {
+    cur_thread = list_entry(tmp, struct thread, child_thread_elem);
+    if(child_tid == cur_thread->tid)
+    {
+      sema_down(&(cur_thread->memory_preserve));
+      exit_status = cur_thread->child_exit_status;
+      list_remove(&(cur_thread->child_thread_elem));
+      sema_up(&(cur_thread->child_thread_lock));
+      return exit_status;
+    }
+  }
   return -1;
 }
+
 
 /* Free the current process's resources. */
 void

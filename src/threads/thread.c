@@ -496,6 +496,18 @@ init_thread (struct thread *t, const char *name, int priority)
   t->nice = running_thread()->nice;
   t->recent_cpu = running_thread()->recent_cpu;
 
+#ifdef USERPROG
+  int i;
+  for(i=0; i < 128; i++)
+    t->file_descriptor[i] = NULL;
+  t->parent = running_thread;
+  sema_init(&t->child_thread_lock, 0);
+  sema_init(&t->memory_preserve, 0);
+  sema_init(&t->exe_child, 0);
+  list_init(&(t->child_thread));
+  list_push_back(&(running_thread()->child_thread), &(t->child_thread_elem));
+  t->flag = 0;
+#endif
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -854,5 +866,11 @@ void mlfqs_recalc_priority(void)
 void test_after_semaup(void)
 {
     if (!list_empty(&ready_list) && (thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority))
+      {
+      if(!intr_context())
         thread_yield();
+      else
+        intr_yield_on_return();
+    }
+
 }
