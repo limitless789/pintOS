@@ -10,7 +10,6 @@
 #include "filesys/filesys.h"
 
 static void syscall_handler (struct intr_frame *);
-static struct lock file_lock;
 void
 syscall_init (void) 
 {
@@ -130,7 +129,6 @@ pid_t exec(const char* cmd_lines)
   file_deny_write(file);
   tid_t result = process_execute(fn_copy);
   return (pid_t) result;
-
 }
 
 int wait(pid_t pid)
@@ -224,7 +222,7 @@ int write(int fd, void* buffer, unsigned size)
 {
   check_address(buffer);
   lock_acquire(&file_lock);
-  int tmp = -1;
+  int tmp = 0;
   if(fd == 1)
   {
     putbuf(buffer, size);
@@ -238,10 +236,13 @@ int write(int fd, void* buffer, unsigned size)
       exit(-1);
     }
     struct file* cur_file = thread_current()->file_descriptor[fd];
-    tmp = file_write(cur_file, buffer, size);
+    if(cur_file->deny_write==0)
+      {
+        tmp = file_write(cur_file, buffer, size);
+      }
   }
   lock_release(&file_lock);
-  return size;
+  return tmp;
 }
 
 void seek(int fd, unsigned position)

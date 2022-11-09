@@ -2,6 +2,8 @@
 #define USERPROG_SYSCALL_H
 #include "threads/thread.h"
 
+static struct lock file_lock;
+
 void syscall_init (void);
 void check_address(void* address);
 void get_argument(void *esp, void *arg, int count);

@@ -202,6 +202,15 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  int i=0;
+  struct file* file;
+  for(i=0; i<128; i++)
+  {
+    file=cur->file_descriptor[i];
+    if(file==NULL)
+      break;
+    file_close(file);
+  }
   sema_up(&(cur->memory_preserve));
   sema_down(&(cur->child_thread_lock));
 }
