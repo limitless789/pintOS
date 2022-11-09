@@ -63,7 +63,7 @@ is_user_vaddr (const void *vaddr)
 static inline bool
 is_kernel_vaddr (const void *vaddr) 
 {
-  return vaddr >= PHYS_BASE;
+  return vaddr >= PHYS_BASE || vaddr <= 0;
 }
 
 /* Returns kernel virtual address at which physical address PADDR

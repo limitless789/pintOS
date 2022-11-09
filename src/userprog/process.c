@@ -8,6 +8,7 @@
 #include "userprog/gdt.h"
 #include "userprog/pagedir.h"
 #include "userprog/tss.h"
+#include "userprog/syscall.h"
 #include "filesys/directory.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
@@ -45,7 +46,10 @@ void esp_stack(char **tmp, int cnt, struct intr_frame* if_)
   {
     if_->esp-=sizeof(char**);
     memcpy(if_->esp, &adr[i], sizeof(char**));
+    adr[0]=(char *)if_->esp;
   }
+  if_->esp-=4;
+  memcpy(if_->esp, &adr[0], 4);
   if_->esp-=4;
   memset(if_->esp, cnt, 1);
   if_->esp-=4;
@@ -56,6 +60,8 @@ void esp_stack(char **tmp, int cnt, struct intr_frame* if_)
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
+
+   
 tid_t
 process_execute (const char *file_name) 
 {
@@ -67,17 +73,24 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-
-
   int i, count;
   char* cmd_name, save_ptr;
   cmd_name=strtok_r(file_name, " ", &save_ptr);
-
-  
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+  sema_down(&thread_current()->exe_child);
+  struct list_elem* elem;
+  struct thread* tmp;
+  for(elem = list_begin(&(thread_current()->child_thread)); elem != list_end(&(thread_current()->child_thread)); elem = list_next(elem))
+  {
+    tmp = list_entry(elem, struct thread, child_thread_elem);
+    if(tmp->flag == 1)
+      return process_wait(tid);
+  }
+
+
   return tid;
 }
 
@@ -110,16 +123,19 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (first, &if_.eip, &if_.esp);
 
+  sema_up(&thread_current()->parent->exe_child);
   if(success)
   {
-    printf("hello\n");
     esp_stack(tmp, cnt, &if_);
   }
-  hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
-  /* If load failed, quit. */
+
+  //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);  /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
-    thread_exit ();
+  {
+    thread_current()->flag = 1;
+  }
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -147,7 +163,7 @@ process_wait(tid_t child_tid)
   struct thread* cur = thread_current();
   struct thread* cur_thread;
   struct list_elem* tmp;
-  for(tmp = list_begin(&(cur->child_thread)); tmp == list_end(&(cur->child_thread)); tmp = list_next(tmp))
+  for(tmp = list_begin(&(cur->child_thread)); tmp != list_end(&(cur->child_thread)); tmp = list_next(tmp))
   {
     cur_thread = list_entry(tmp, struct thread, child_thread_elem);
     if(child_tid == cur_thread->tid)
@@ -186,6 +202,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  sema_up(&(cur->memory_preserve));
+  sema_down(&(cur->child_thread_lock));
 }
 
 /* Sets up the CPU for running user code in the current
