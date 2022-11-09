@@ -240,6 +240,7 @@ int write(int fd, void* buffer, unsigned size)
       {
         tmp = file_write(cur_file, buffer, size);
       }
+
   }
   lock_release(&file_lock);
   return tmp;
@@ -264,6 +265,5 @@ void close(int fd)
   struct file* cur_file = thread_current()->file_descriptor[fd];
   if(thread_current()->file_descriptor[fd] == NULL)
     exit(-1);
-  cur_file = NULL;
   file_close(cur_file);
 }
