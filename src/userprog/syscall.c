@@ -99,9 +99,8 @@ void exit(int status)
   int i;
   printf("%s: exit(%d)\n", cur->name, status);
   cur->child_exit_status = status;
-  struct thread* current_thread = thread_current();
   for(i = 3; i < 128; i++)
-    if(current_thread->file_descriptor[i] != NULL)
+    if(cur->file_descriptor[i] != NULL)
       close(i);
   struct thread* tmp_thread;
   struct list_elem* tmp_elem;
@@ -123,10 +122,15 @@ pid_t exec(const char* cmd_lines)
     filename[i] = cmd_lines[i];
   filename[i] = '\0';
   file = filesys_open(filename);
+  if(fn_copy==NULL)
+    {
+      palloc_free_page (fn_copy);
+      return -1;
+    }
   strlcpy (fn_copy, cmd_lines, PGSIZE);
   if(file == NULL)
     return -1;
-  file_deny_write(file);
+  //file_deny_write(file);
   tid_t result = process_execute(fn_copy);
   return (pid_t) result;
 }
@@ -159,7 +163,6 @@ int open(const char* file)
   check_address(file);
   lock_acquire(&file_lock);
   int i, tmp;
-  char* filename;
   struct file* open_file = filesys_open(file);
   tmp = -1;
   if(open_file == NULL)
@@ -236,11 +239,11 @@ int write(int fd, void* buffer, unsigned size)
       exit(-1);
     }
     struct file* cur_file = thread_current()->file_descriptor[fd];
-    if(cur_file->deny_write==0)
+    if(cur_file->deny_write)
       {
-        tmp = file_write(cur_file, buffer, size);
+        file_deny_write(cur_file);
       }
-
+    tmp = file_write(cur_file, buffer, size);  
   }
   lock_release(&file_lock);
   return tmp;
@@ -265,5 +268,6 @@ void close(int fd)
   struct file* cur_file = thread_current()->file_descriptor[fd];
   if(thread_current()->file_descriptor[fd] == NULL)
     exit(-1);
-  file_close(cur_file);
+  struct file* fp =NULL;
+  return file_close(fp);
 }
