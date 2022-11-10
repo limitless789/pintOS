@@ -60,7 +60,12 @@ void esp_stack(char **tmp, int cnt, struct intr_frame* if_)
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
-
+void parse_filename(char *src, char *dest) {
+  int i;
+  strlcpy(dest, src, strlen(src) + 1);
+  for (i=0; dest[i]!='\0' && dest[i] != ' '; i++);
+  dest[i] = '\0';
+}
    
 tid_t
 process_execute (const char *file_name) 
@@ -73,7 +78,7 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  char cmd_name[256];
+  char cmd_name[128];
   parse_filename(file_name, cmd_name);
   if(filesys_open(cmd_name) == NULL)
     return -1;
@@ -123,19 +128,22 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (first, &if_.eip, &if_.esp);
-
+  if (!success) 
+  {
+    thread_current()->flag = 1;
+  sema_up(&thread_current()->parent->exe_child);
+    exit(-1);
+  }
   sema_up(&thread_current()->parent->exe_child);
   if(success)
   {
     esp_stack(tmp, cnt, &if_);
   }
 
-  //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);  /* If load failed, quit. */
+  //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true); 
+  /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-  {
-    thread_current()->flag = 1;
-  }
+
 
 
   /* Start the user process by simulating a return from an
