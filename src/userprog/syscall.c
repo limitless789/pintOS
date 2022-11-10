@@ -171,12 +171,12 @@ int open(const char* file)
   {
     for(i = 3; i < 128; i++)
     {
-      if(thread_current()->file_descriptor[i] == NULL && strcmp(thread_name(), file) == 0)
-      {
-        file_deny_write(open_file);
-      }
       if(thread_current()->file_descriptor[i] == NULL)
       {
+        if(strcmp(thread_name(), file) == 0)
+        {
+          file_deny_write(open_file);
+        }
         thread_current()->file_descriptor[i] = open_file;
         tmp = i;
         break;
@@ -212,7 +212,7 @@ int read(int fd, void* buffer, unsigned size)
     struct thread* cur = thread_current();
     if(cur->file_descriptor[fd] == NULL)
     {
-      lock_release(&file_lock);
+      //lock_release(&file_lock);
       exit(-1);
     }
     i = file_read(cur->file_descriptor[fd], buffer, size);
@@ -265,9 +265,9 @@ unsigned tell(int fd)
 
 void close(int fd)
 {
-  struct file* cur_file = thread_current()->file_descriptor[fd];
   if(thread_current()->file_descriptor[fd] == NULL)
     exit(-1);
-  struct file* fp =NULL;
-  return file_close(fp);
+  struct file* cur_file = thread_current()->file_descriptor[fd];
+  thread_current()->file_descriptor[fd] = NULL;
+  return file_close(cur_file);
 }

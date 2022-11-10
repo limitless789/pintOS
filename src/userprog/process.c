@@ -73,14 +73,15 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  int i, count;
-  char* cmd_name, save_ptr;
-  cmd_name=strtok_r(file_name, " ", &save_ptr);
+  char cmd_name[256];
+  parse_filename(file_name, cmd_name);
+  if(filesys_open(cmd_name) == NULL)
+    return -1;
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (cmd_name, PRI_DEFAULT, start_process, fn_copy);
+  sema_down(&thread_current()->exe_child);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
-  sema_down(&thread_current()->exe_child);
   struct list_elem* elem;
   struct thread* tmp;
   for(elem = list_begin(&(thread_current()->child_thread)); elem != list_end(&(thread_current()->child_thread)); elem = list_next(elem))
