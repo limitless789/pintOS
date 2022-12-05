@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "vm/vm.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -472,6 +473,19 @@ is_thread (struct thread *t)
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 
+unsigned hash_func (const struct hash_elem *e, void *aux)
+{
+  struct page *p=hash_entry(e, struct page, hash_elem);
+  return hash_bytes(p->vaddr, sizeof(p->vaddr));
+}
+
+bool less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux)
+{
+  struct page *p1=hash_entry(a, struct page, hash_elem);
+  struct page *p2=hash_entry(b, struct page, hash_elem);
+  return (p1->vaddr)<(p2->vaddr);
+}
+
 /* Does basic initialization of T as a blocked thread named
    NAME. */
 static void
@@ -495,7 +509,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->donations);
   t->nice = running_thread()->nice;
   t->recent_cpu = running_thread()->recent_cpu;
-
+  hash_init(&t->spt, hash_func, less_func, 0);
 #ifdef USERPROG
   int i;
   for(i=0; i < 128; i++)

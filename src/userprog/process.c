@@ -203,6 +203,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  hash_destroy(&(cur->spt), NULL);
   sema_up(&(cur->memory_preserve));
   sema_down(&(cur->child_thread_lock));
 }

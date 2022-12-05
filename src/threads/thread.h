@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "lib/kernel/hash.h"
 #include "threads/synch.h"
 /* States in a thread's life cycle. */
 enum thread_status
@@ -110,10 +111,11 @@ struct thread
 
     int nice;
     int recent_cpu; /* for mlfqs */
-
+    struct hash spt;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+
     struct semaphore child_thread_lock;
     struct semaphore memory_preserve;
     struct list child_thread;
