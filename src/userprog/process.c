@@ -16,11 +16,30 @@
 #include "threads/init.h"
 #include "threads/interrupt.h"
 #include "threads/palloc.h"
+#include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "vm/vm.h"
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+
+
+unsigned
+hash_func (const struct hash_elem *elem, void *aux UNUSED)
+{
+const struct page *p = hash_entry (elem, struct page, elem);
+return hash_int ((int)p->vaddr);
+}
+/* Returns true if page a precedes page b. */
+bool
+less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux
+UNUSED)
+{
+const struct page *p1 = hash_entry (a, struct page, elem);
+const struct page *p2 = hash_entry (b, struct page, elem);
+return p1->vaddr < p2->vaddr;
+}
+
 
 void esp_stack(char **tmp, int cnt, struct intr_frame* if_)
 {
@@ -113,7 +132,7 @@ start_process (void *file_name_)
   struct intr_frame if_;
   bool success;
   
-  int i=0, cnt=0;
+  int cnt=0;
   char *tmp[128];
   char *ptr, *save_ptr;
   ptr=strtok_r(fn, " ", &save_ptr);
@@ -131,7 +150,13 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (first, &if_.eip, &if_.esp);
-
+  if(!thread_current()->init_flag)
+  {
+    struct spt_hash *spt_temp=malloc(sizeof(struct spt_hash));
+    hash_init(&spt_temp->spt_hash, hash_func, less_func, NULL);
+    thread_current()->spt=spt_temp;
+    thread_current()->init_flag=1;
+  }
   sema_up(&thread_current()->parent->exe_child);
   if(success)
   {
@@ -211,9 +236,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  hash_destroy(&(cur->spt), NULL);
-  free(cur->spt);
-  cur->spt=NULL;
+  hash_destroy(&(cur->spt->spt_hash), NULL);
   sema_up(&(cur->memory_preserve));
   sema_down(&(cur->child_thread_lock));
 }
@@ -318,9 +341,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
   int i;
 
   /* Allocate and activate page directory. */
-  struct hash* spt_temp=malloc(sizeof(struct hash));
-  hash_init(spt_temp, hash_func, less_func, NULL);
-  t->spt=spt_temp;
 
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
@@ -492,7 +512,13 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
-
+if(!thread_current()->init_flag)
+  {
+    struct spt_hash *spt_temp=malloc(sizeof(struct spt_hash));
+    hash_init(&spt_temp->spt_hash, hash_func, less_func, NULL);
+    thread_current()->spt=spt_temp;
+    thread_current()->init_flag=1;
+  }
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
@@ -506,7 +532,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       struct page* p=malloc(sizeof(struct page));
       p->data=data;
       p->vaddr=upage;
-      spt_add(thread_current()->spt, p);
+      spt_add(&thread_current()->spt->spt_hash, p);
+
 /*
       // Get a page of memory. 
       uint8_t *kpage = palloc_get_page (PAL_USER);
@@ -528,11 +555,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
           return false; 
         }
 
-      // Advance.
+      */// Advance.
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
-      */
+      
     }
 
   return true;

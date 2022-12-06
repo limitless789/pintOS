@@ -1,22 +1,25 @@
 #include "filesys/file.h"
 #include "filesys/off_t.h"
-#include "lib/kernel/hash.h"
-#include "lib/kernel/list.h"
-
+#include <list.h>
+#include <hash.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 
+struct spt_hash{
+    struct hash spt_hash;
+};
+
 struct page{
-    struct hash_elem page_elem;
+    struct hash_elem elem;
     void *vaddr;
-    struct frame *frame;
+    struct frame *frame_by_page;
     struct spt_data *data;
 };
 
 struct frame{
     void *addr;
-    struct page *page;
+    struct page *page_of_frame;
     struct list_elem frame_elem;
 };
 
@@ -27,9 +30,11 @@ struct spt_data{
     bool writable_flag;
 };
 
+void frame_init();
+
 struct page* spt_find(struct hash* h, void *addr);
 struct page* spt_add(struct hash* h, struct page *p);
-struct page* spt_del(struct hash* h, struct page *p);
+struct hash_elem* spt_del(struct hash* h, struct page *p);
 
 struct frame* get_frame(struct page* p);
 void frame_free(struct frame* f);

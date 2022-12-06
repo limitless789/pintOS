@@ -116,7 +116,7 @@ thread_start (void)
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
   thread_create ("idle", PRI_MIN, idle, &idle_started);
- 
+  frame_init();
   load_avg = LOAD_AVG_DEFAULT;
 
   /* Start preemptive thread scheduling. */
@@ -473,18 +473,6 @@ is_thread (struct thread *t)
   return t != NULL && t->magic == THREAD_MAGIC;
 }
 
-unsigned hash_func (const struct hash_elem *e, void *aux UNUSED)
-{
-  struct page *p=hash_entry(e, struct page, page_elem);
-  return hash_int((int)(p->vaddr));
-}
-
-bool less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED)
-{
-  struct page *p1=hash_entry(a, struct page, page_elem);
-  struct page *p2=hash_entry(b, struct page, page_elem);
-  return (p1->vaddr)<(p2->vaddr);
-}
 
 /* Does basic initialization of T as a blocked thread named
    NAME. */
@@ -509,6 +497,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->donations);
   t->nice = running_thread()->nice;
   t->recent_cpu = running_thread()->recent_cpu;
+  t->init_flag=0;
 #ifdef USERPROG
   int i;
   for(i=0; i < 128; i++)
