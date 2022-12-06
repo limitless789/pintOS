@@ -1,5 +1,6 @@
 #include "filesys/file.h"
 #include "filesys/off_t.h"
+#include "threads/palloc.h"
 #include <list.h>
 #include <hash.h>
 #include <stdbool.h>
@@ -36,7 +37,7 @@ struct page* spt_find(struct hash* h, void *addr);
 struct page* spt_add(struct hash* h, struct page *p);
 struct hash_elem* spt_del(struct hash* h, struct page *p);
 
-struct frame* get_frame(struct page* p);
+struct frame* get_frame(struct page* p, enum palloc_flags pf);
 void frame_free(struct frame* f);
 
 struct spt_data* make_spt_data(struct file* f, off_t o, uint32_t r, bool w);

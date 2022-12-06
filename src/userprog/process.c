@@ -573,14 +573,19 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  struct page* p =malloc(sizeof(struct page));
+  p->vaddr=PHYS_BASE-PGSIZE;
+  struct frame* f;
+  f=(uint8_t)get_frame(p, PAL_ZERO);
+  kpage=f->addr;
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
         *esp = PHYS_BASE;
-      else
-        palloc_free_page (kpage);
+      else{
+        frame_free (f);
+      }
     }
   return success;
 }
