@@ -111,7 +111,7 @@ struct thread
 
     int nice;
     int recent_cpu; /* for mlfqs */
-    struct hash spt;
+    struct hash* spt;
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -166,6 +166,9 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+
+unsigned hash_func (const struct hash_elem *e, void *aux);
+bool less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 
 void thread_sleep(int64_t awake_tick);
 void thread_awake(int64_t ticks);

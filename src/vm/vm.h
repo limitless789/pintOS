@@ -8,10 +8,10 @@
 #include <string.h>
 
 struct page{
-    struct hash_elem hash_elem;
+    struct hash_elem page_elem;
     void *vaddr;
-    bool ronly;
     struct frame *frame;
+    struct spt_data *data;
 };
 
 struct frame{
@@ -27,5 +27,12 @@ struct spt_data{
     bool writable_flag;
 };
 
+struct page* spt_find(struct hash* h, void *addr);
+struct page* spt_add(struct hash* h, struct page *p);
+struct page* spt_del(struct hash* h, struct page *p);
 
-struct page* addr2pg(void *addr);
+struct frame* get_frame(struct page* p);
+void frame_free(struct frame* f);
+
+struct spt_data* make_spt_data(struct file* f, off_t o, uint32_t r, bool w);
+bool lazy_load(struct hash *h, void* addr);

@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "hashtable": "c"
+        "hashtable": "c",
+        "*.tcc": "c",
+        "cstdlib": "c",
+        "string.h": "c"
     }
 }

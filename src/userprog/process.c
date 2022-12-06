@@ -18,7 +18,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-
+#include "vm/vm.h"
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
@@ -55,6 +55,14 @@ void esp_stack(char **tmp, int cnt, struct intr_frame* if_)
   if_->esp-=4;
   memset(if_->esp, 0, 4);
 }
+
+void parse_filename(char *src, char *dest) {
+  int i;
+  strlcpy(dest, src, strlen(src) + 1);
+  for (i=0; dest[i]!='\0' && dest[i] != ' '; i++);
+  dest[i] = '\0';
+}
+
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -204,6 +212,8 @@ process_exit (void)
       pagedir_destroy (pd);
     }
   hash_destroy(&(cur->spt), NULL);
+  free(cur->spt);
+  cur->spt=NULL;
   sema_up(&(cur->memory_preserve));
   sema_down(&(cur->child_thread_lock));
 }
@@ -308,6 +318,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
   int i;
 
   /* Allocate and activate page directory. */
+  struct hash* spt_temp=malloc(sizeof(struct hash));
+  hash_init(spt_temp, hash_func, less_func, NULL);
+  t->spt=spt_temp;
+
   t->pagedir = pagedir_create ();
   if (t->pagedir == NULL) 
     goto done;
@@ -488,12 +502,18 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      /* Get a page of memory. */
+      struct spt_data* data=make_spt_data(file, ofs, page_read_bytes, writable);
+      struct page* p=malloc(sizeof(struct page));
+      p->data=data;
+      p->vaddr=upage;
+      spt_add(thread_current()->spt, p);
+/*
+      // Get a page of memory. 
       uint8_t *kpage = palloc_get_page (PAL_USER);
       if (kpage == NULL)
         return false;
 
-      /* Load this page. */
+      // Load this page.
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
           palloc_free_page (kpage);
@@ -501,18 +521,20 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         }
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
-      /* Add the page to the process's address space. */
+      // Add the page to the process's address space.
       if (!install_page (upage, kpage, writable)) 
         {
           palloc_free_page (kpage);
           return false; 
         }
 
-      /* Advance. */
+      // Advance.
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
+      */
     }
+
   return true;
 }
 
