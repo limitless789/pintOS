@@ -8,6 +8,8 @@
 #include "threads/palloc.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "userprog/process.h"
+#include "vm/vm.h"
 
 static void syscall_handler (struct intr_frame *);
 void
@@ -20,6 +22,9 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
+  #ifdef VM
+    thread_current()->rsp_stack = f->rsp;
+  #endif
   switch(*(uint32_t*)(f->esp))
   {
     case SYS_HALT:
@@ -78,6 +83,18 @@ syscall_handler (struct intr_frame *f)
     case SYS_CLOSE:
       check_address(f->esp + 4);
       close((int)*(uint32_t*)(f->esp + 4));
+      break;
+    case SYS_MMAP:
+      check_address(f->esp + 4);
+      check_address(f->esp + 8);
+      check_address(f->esp + 12);
+      check_address(f->esp + 16);
+      check_address(f->esp + 20);
+      mmap((void*)*(uint32_t*)(f->esp + 4), (size_t)*(uint32_t*)(f->esp + 8), (int)*(uint32_t*)(f->esp + 12), (int)*(uint32_t*)(f->esp + 16), (off_t)*(uint32_t*)(f->esp + 20));
+      break;
+    case SYS_MUNMAP:
+      check_address(f->esp + 4);
+      munmap((void*)*(uint32_t*)(f->esp + 4));
       break;
   }
 }
@@ -270,4 +287,29 @@ void close(int fd)
   struct file* cur_file = thread_current()->file_descriptor[fd];
   thread_current()->file_descriptor[fd] = NULL;
   return file_close(cur_file);
+}
+
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset)
+{
+ if (offset % PGSIZE != 0){
+        return NULL;
+    }
+    if(pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL || (long long)length <=0)
+        return NULL;
+    if(fd == 0 || fd == 1)
+        exit(-1);
+    if(spt_find(&thread_current()->spt, addr))
+        return NULL;
+
+    struct file *target = process_get_file(fd);
+    if(target == NULL)
+        return NULL;
+
+    void *ret = do_mmap(addr, length, writable, target, offset);
+    return ret;
+}
+
+void munmap(void *addr)
+{
+  do_munmap(addr);
 }
