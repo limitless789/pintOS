@@ -159,6 +159,12 @@ page_fault (struct intr_frame *f)
           user ? "user" : "kernel");
          exit(-1);
       }
+
+   if(!is_kernel_vaddr(fault_addr))
+   {
+      expand_stack(fault_addr, f);
+   }   
+
    return;
    /*if(!user || is_kernel_vaddr(fault_addr) || not_present)
       exit(-1);*/

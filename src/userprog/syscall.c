@@ -10,6 +10,7 @@
 #include "filesys/filesys.h"
 #include "userprog/process.h"
 #include "vm/vm.h"
+#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 void
@@ -23,7 +24,7 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   #ifdef VM
-    thread_current()->rsp_stack = f->rsp;
+    thread_current()->rsp_stack = f-> rsp;
   #endif
   switch(*(uint32_t*)(f->esp))
   {
@@ -87,14 +88,11 @@ syscall_handler (struct intr_frame *f)
     case SYS_MMAP:
       check_address(f->esp + 4);
       check_address(f->esp + 8);
-      check_address(f->esp + 12);
-      check_address(f->esp + 16);
-      check_address(f->esp + 20);
-      mmap((void*)*(uint32_t*)(f->esp + 4), (size_t)*(uint32_t*)(f->esp + 8), (int)*(uint32_t*)(f->esp + 12), (int)*(uint32_t*)(f->esp + 16), (off_t)*(uint32_t*)(f->esp + 20));
+      f->eax = mmap((int)*(uint32_t*)(f->esp + 4), (void*)*(uint32_t*)(f->esp + 8));
       break;
     case SYS_MUNMAP:
       check_address(f->esp + 4);
-      munmap((void*)*(uint32_t*)(f->esp + 4));
+      munmap((mapid_t)*(uint32_t*)(f->esp + 4));
       break;
   }
 }
@@ -289,27 +287,28 @@ void close(int fd)
   return file_close(cur_file);
 }
 
-void *mmap(void *addr, size_t length, int writable, int fd, off_t offset)
+int mmap(int fd, void *addr)
 {
- if (offset % PGSIZE != 0){
-        return NULL;
-    }
-    if(pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL || (long long)length <=0)
-        return NULL;
-    if(fd == 0 || fd == 1)
-        exit(-1);
-    if(spt_find(&thread_current()->spt, addr))
-        return NULL;
+  if(pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL)
+    return -1;
+  if(fd == 0 || fd == 1)
+    return -1;
+  if(spt_find(&thread_current()->spt, addr))
+    return NULL;
+  struct file *target = process_get_file(fd);
+  if(target == NULL)
+    return -1;
+  //mapid 할당
+  //mmap_file 생성 및 초기화
+  //vm_entry 생성 및 초기화
+  mapid_t mapid;
+  struct mmap_file tmp_mmap;
+  struct spt_data = ;
 
-    struct file *target = process_get_file(fd);
-    if(target == NULL)
-        return NULL;
-
-    void *ret = do_mmap(addr, length, writable, target, offset);
-    return ret;
+  return mapid;
 }
 
-void munmap(void *addr)
+void munmap(mapid_t mapid)
 {
-  do_munmap(addr);
+  do_munmap(mapid);
 }
