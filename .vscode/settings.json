@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "hashtable": "c"
+        "hashtable": "c",
+        "palloc.h": "c",
+        "flags.h": "c"
     }
 }

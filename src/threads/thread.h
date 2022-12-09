@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include <hash.h>
 #include "threads/synch.h"
 /* States in a thread's life cycle. */
 enum thread_status
@@ -110,6 +111,9 @@ struct thread
 
     int nice;
     int recent_cpu; /* for mlfqs */
+    struct spt_hash *spt;
+    bool init_flag;
+    struct intr_frame *esp_stack;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

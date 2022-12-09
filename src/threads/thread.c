@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "vm/vm.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -98,6 +99,7 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
   list_init (&sleep_list);
+  frame_init();
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -495,6 +497,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->donations);
   t->nice = running_thread()->nice;
   t->recent_cpu = running_thread()->recent_cpu;
+
 
 #ifdef USERPROG
   int i;

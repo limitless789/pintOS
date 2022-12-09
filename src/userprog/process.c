@@ -18,9 +18,34 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/vm.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+
+unsigned
+hash_func (const struct hash_elem *elem, void *aux UNUSED)
+{
+const struct page *p = hash_entry (elem, struct page, elem);
+return hash_int ((int)p->vaddr);
+}
+/* Returns true if page a precedes page b. */
+bool
+less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux
+UNUSED)
+{
+const struct page *p1 = hash_entry (a, struct page, elem);
+const struct page *p2 = hash_entry (b, struct page, elem);
+return p1->vaddr < p2->vaddr;
+}
+
+void parse_filename(char *src, char *dest) {
+  int i;
+  strlcpy(dest, src, strlen(src) + 1);
+  for (i=0; dest[i]!='\0' && dest[i] != ' '; i++);
+  dest[i] = '\0';
+}
+
 
 void esp_stack(char **tmp, int cnt, struct intr_frame* if_)
 {
@@ -130,6 +155,14 @@ start_process (void *file_name_)
     esp_stack(tmp, cnt, &if_);
   }
 
+  if(!thread_current()->init_flag)
+  {
+    struct spt_hash *spt_temp=malloc(sizeof(struct spt_hash));
+    hash_init(&spt_temp->spt_hash, hash_func, less_func, NULL);
+    thread_current()->spt=spt_temp;
+    thread_current()->init_flag=1;
+  }
+
   //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);  /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
@@ -203,9 +236,11 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  hash_destroy(&(cur->spt->spt_hash), NULL);
   sema_up(&(cur->memory_preserve));
   sema_down(&(cur->child_thread_lock));
 }
+
 
 /* Sets up the CPU for running user code in the current
    thread.
@@ -478,6 +513,14 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
+  if(!thread_current()->init_flag)
+  {
+    struct spt_hash *spt_temp=malloc(sizeof(struct spt_hash));
+    hash_init(&spt_temp->spt_hash, hash_func, less_func, NULL);
+    thread_current()->spt=spt_temp;
+    thread_current()->init_flag=1;
+  }
+
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
@@ -487,12 +530,19 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-      /* Get a page of memory. */
+      struct spt_data* data=make_spt_data(file, ofs, page_read_bytes, writable);
+      struct page* p=malloc(sizeof(struct page));
+      p->data=data;
+      p->vaddr=upage;
+      spt_add(&thread_current()->spt->spt_hash, p);
+
+/*
+      // Get a page of memory. 
       uint8_t *kpage = palloc_get_page (PAL_USER);
       if (kpage == NULL)
         return false;
 
-      /* Load this page. */
+      // Load this page.
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
           palloc_free_page (kpage);
@@ -500,18 +550,21 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         }
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
-      /* Add the page to the process's address space. */
+      // Add the page to the process's address space.
       if (!install_page (upage, kpage, writable)) 
         {
           palloc_free_page (kpage);
           return false; 
         }
-
-      /* Advance. */
+*/
+      // Advance.
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
+      
     }
+
+
   return true;
 }
 
@@ -523,14 +576,17 @@ setup_stack (void **esp)
   uint8_t *kpage;
   bool success = false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  kpage = get_frame (PHYS_BASE - PGSIZE,  PAL_ZERO);
+  //kpage=palloc_get_page(PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        {
+          *esp = PHYS_BASE;
+        }
       else
-        palloc_free_page (kpage);
+        frame_free (find_frame(kpage));
     }
   return success;
 }
