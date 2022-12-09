@@ -20,10 +20,17 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "vm/vm.h"
+<<<<<<< HEAD
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
 
+=======
+
+static thread_func start_process NO_RETURN;
+static bool load (const char *cmdline, void (**eip) (void), void **esp);
+
+>>>>>>> 0f4be22a0abb5c05fe1a9892d85dd68b6e4e8da2
 unsigned
 hash_func (const struct hash_elem *elem, void *aux UNUSED)
 {
@@ -40,6 +47,16 @@ const struct page *p2 = hash_entry (b, struct page, elem);
 return p1->vaddr < p2->vaddr;
 }
 
+<<<<<<< HEAD
+=======
+void parse_filename(char *src, char *dest) {
+  int i;
+  strlcpy(dest, src, strlen(src) + 1);
+  for (i=0; dest[i]!='\0' && dest[i] != ' '; i++);
+  dest[i] = '\0';
+}
+
+>>>>>>> 0f4be22a0abb5c05fe1a9892d85dd68b6e4e8da2
 
 void esp_stack(char **tmp, int cnt, struct intr_frame* if_)
 {
@@ -87,7 +104,12 @@ void parse_filename(char *src, char *dest) {
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
    thread id, or TID_ERROR if the thread cannot be created. */
-
+void parse_filename(char *src, char *dest) {
+  int i;
+  strlcpy(dest, src, strlen(src) + 1);
+  for (i=0; dest[i]!='\0' && dest[i] != ' '; i++);
+  dest[i] = '\0';
+}
    
 tid_t
 process_execute (const char *file_name) 
@@ -100,7 +122,7 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
-  char cmd_name[256];
+  char cmd_name[128];
   parse_filename(file_name, cmd_name);
   if(filesys_open(cmd_name) == NULL)
     return -1;
@@ -150,12 +172,20 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (first, &if_.eip, &if_.esp);
+<<<<<<< HEAD
   if(!thread_current()->init_flag)
   {
     struct spt_hash *spt_temp=malloc(sizeof(struct spt_hash));
     hash_init(&spt_temp->spt_hash, hash_func, less_func, NULL);
     thread_current()->spt=spt_temp;
     thread_current()->init_flag=1;
+=======
+  if (!success) 
+  {
+    thread_current()->flag = 1;
+  sema_up(&thread_current()->parent->exe_child);
+    exit(-1);
+>>>>>>> 0f4be22a0abb5c05fe1a9892d85dd68b6e4e8da2
   }
   sema_up(&thread_current()->parent->exe_child);
   if(success)
@@ -163,12 +193,22 @@ start_process (void *file_name_)
     esp_stack(tmp, cnt, &if_);
   }
 
-  //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);  /* If load failed, quit. */
-  palloc_free_page (file_name);
-  if (!success) 
+<<<<<<< HEAD
+  if(!thread_current()->init_flag)
   {
-    thread_current()->flag = 1;
+    struct spt_hash *spt_temp=malloc(sizeof(struct spt_hash));
+    hash_init(&spt_temp->spt_hash, hash_func, less_func, NULL);
+    thread_current()->spt=spt_temp;
+    thread_current()->init_flag=1;
   }
+
+  //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);  /* If load failed, quit. */
+=======
+  //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true); 
+  /* If load failed, quit. */
+>>>>>>> de2380eeb495b2d49e4f47d91674da0ddf76d0bd
+  palloc_free_page (file_name);
+
 
 
   /* Start the user process by simulating a return from an
@@ -240,6 +280,7 @@ process_exit (void)
   sema_up(&(cur->memory_preserve));
   sema_down(&(cur->child_thread_lock));
 }
+
 
 /* Sets up the CPU for running user code in the current
    thread.
@@ -512,7 +553,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
-if(!thread_current()->init_flag)
+
+  if(!thread_current()->init_flag)
   {
     struct spt_hash *spt_temp=malloc(sizeof(struct spt_hash));
     hash_init(&spt_temp->spt_hash, hash_func, less_func, NULL);
@@ -554,6 +596,7 @@ if(!thread_current()->init_flag)
           palloc_free_page (kpage);
           return false; 
         }
+<<<<<<< HEAD
 
       */// Advance.
       read_bytes -= page_read_bytes;
@@ -562,6 +605,17 @@ if(!thread_current()->init_flag)
       ofs+=page_read_bytes;
     }
 
+=======
+*/
+      // Advance.
+      read_bytes -= page_read_bytes;
+      zero_bytes -= page_zero_bytes;
+      upage += PGSIZE;
+      
+    }
+
+
+>>>>>>> 0f4be22a0abb5c05fe1a9892d85dd68b6e4e8da2
   return true;
 }
 
@@ -572,18 +626,26 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
+<<<<<<< HEAD
   struct page *p=malloc(sizeof(struct page));
   p->vaddr=PHYS_BASE-PGSIZE;
   struct frame *f=get_frame(p);
   kpage=f->addr;
   memset (kpage, 0, PGSIZE);
+=======
+
+  kpage = get_frame (PHYS_BASE - PGSIZE,  PAL_ZERO);
+  //kpage=palloc_get_page(PAL_USER | PAL_ZERO);
+>>>>>>> 0f4be22a0abb5c05fe1a9892d85dd68b6e4e8da2
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        {
+          *esp = PHYS_BASE;
+        }
       else
-        palloc_free_page (kpage);
+        frame_free (find_frame(kpage));
     }
   return success;
 }
