@@ -112,6 +112,5 @@ bool lazy_load(struct hash *h, void* addr)
             p->frame_by_page=NULL;
             return false;
         }
-            printf("%x\n", (int)addr);
     return true;
 }

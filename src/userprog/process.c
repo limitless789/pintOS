@@ -559,7 +559,7 @@ if(!thread_current()->init_flag)
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
-      
+      ofs+=page_read_bytes;
     }
 
   return true;
@@ -572,8 +572,11 @@ setup_stack (void **esp)
 {
   uint8_t *kpage;
   bool success = false;
-
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  struct page *p=malloc(sizeof(struct page));
+  p->vaddr=PHYS_BASE-PGSIZE;
+  struct frame *f=get_frame(p);
+  kpage=f->addr;
+  memset (kpage, 0, PGSIZE);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
