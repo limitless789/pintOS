@@ -8,6 +8,9 @@
 #include "threads/palloc.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "userprog/process.h"
+#include "vm/vm.h"
+#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 void
@@ -20,6 +23,9 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
+  #ifdef VM
+    thread_current()->rsp_stack = f-> rsp;
+  #endif
   switch(*(uint32_t*)(f->esp))
   {
     case SYS_HALT:
@@ -78,6 +84,15 @@ syscall_handler (struct intr_frame *f)
     case SYS_CLOSE:
       check_address(f->esp + 4);
       close((int)*(uint32_t*)(f->esp + 4));
+      break;
+    case SYS_MMAP:
+      check_address(f->esp + 4);
+      check_address(f->esp + 8);
+      f->eax = mmap((int)*(uint32_t*)(f->esp + 4), (void*)*(uint32_t*)(f->esp + 8));
+      break;
+    case SYS_MUNMAP:
+      check_address(f->esp + 4);
+      munmap((mapid_t)*(uint32_t*)(f->esp + 4));
       break;
   }
 }
@@ -267,4 +282,30 @@ void close(int fd)
   struct file* cur_file = thread_current()->file_descriptor[fd];
   thread_current()->file_descriptor[fd] = NULL;
   return file_close(cur_file);
+}
+
+int mmap(int fd, void *addr)
+{
+  if(pg_round_down(addr) != addr || is_kernel_vaddr(addr) || addr == NULL)
+    return -1;
+  if(fd == 0 || fd == 1)
+    return -1;
+  if(spt_find(&thread_current()->spt, addr))
+    return NULL;
+  struct file *target = process_get_file(fd);
+  if(target == NULL)
+    return -1;
+  //mapid 할당
+  //mmap_file 생성 및 초기화
+  //vm_entry 생성 및 초기화
+  mapid_t mapid;
+  struct mmap_file tmp_mmap;
+  struct spt_data = ;
+
+  return mapid;
+}
+
+void munmap(mapid_t mapid)
+{
+  do_munmap(mapid);
 }

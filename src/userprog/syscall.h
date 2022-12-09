@@ -23,5 +23,7 @@ int write(int fd, void* buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void close(int fd);
+int mmap(int fd, void *offset);
+void munmap(mapid_t mapid);
 
 #endif /* userprog/syscall.h */

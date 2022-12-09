@@ -236,6 +236,10 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  #ifdef VM
+  if(!hash_entry(&cur->spt.pages))
+    supplemental_page_table_kill(&cur->spt);
+  #endif
   hash_destroy(&(cur->spt->spt_hash), NULL);
   sema_up(&(cur->memory_preserve));
   //sema_down(&(cur->child_thread_lock));
@@ -608,4 +612,13 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+struct file* process_get_file(int fd)
+{
+    struct thread *cur = thread_current();
+    if (cur->file_descriptor[fd])
+        return cur->file_descriptor[fd];
+    else
+        return NULL;
 }

@@ -114,3 +114,15 @@ bool lazy_load(struct hash *h, void* addr)
         }
     return true;
 }
+
+bool expand_stack(void* addr, struct intr_frame *f)
+{
+    void *rsp_stack = is_kernel_vaddr(f->rsp) ? thread_current()->rsp_stack : f->rsp;
+    if(rsp_stack - 8 <= addr && USER_STACK - 0x100000 <= addr && addr <= USER_STACK)
+    {
+        palloc_get_page(thread_current()->rsp_stack - PGSIZE);
+        thread_current()->rsp_stack -= PGSIZE;
+        return true;
+    }
+    return false;
+}
