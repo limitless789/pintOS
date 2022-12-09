@@ -44,11 +44,11 @@ struct hash_elem* spt_del(struct hash* h, struct page *p)
     return e;
 }
 
-struct frame* get_frame(struct page* p, enum palloc_flags pf)
+struct frame* get_frame(struct page* p)
 {
     lock_acquire(&frame_lock);
     struct frame *f =malloc(sizeof(struct frame));
-    void* addr=palloc_get_page(PAL_USER | pf);
+    void* addr=palloc_get_page(PAL_USER);
     if(addr==NULL)
         //swap_out();
         return NULL;
@@ -93,7 +93,7 @@ bool lazy_load(struct hash *h, void* addr)
         return true;
 
     addr=pg_round_down(addr);
-    struct frame* f=get_frame(p, NULL);
+    struct frame* f=get_frame(p);
     p->frame_by_page=f;
     struct spt_data* d=p->data;
 

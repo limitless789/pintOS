@@ -92,13 +92,13 @@ void parse_filename(char *src, char *dest) {
 tid_t
 process_execute (const char *file_name) 
 {
-  char *fn_copy;
+  char fn_copy[16];
   tid_t tid;
   /* Make a copy of FILE_NAME.
-     Otherwise there's a race between the caller and load(). */
+     Otherwise there's a race between the caller and load(). 
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
-    return TID_ERROR;
+    return TID_ERROR;*/
   strlcpy (fn_copy, file_name, PGSIZE);
   char cmd_name[256];
   parse_filename(file_name, cmd_name);
@@ -205,7 +205,7 @@ process_wait(tid_t child_tid)
       sema_down(&(cur_thread->memory_preserve));
       exit_status = cur_thread->child_exit_status;
       list_remove(&(cur_thread->child_thread_elem));
-      sema_up(&(cur_thread->child_thread_lock));
+      //sema_up(&(cur_thread->child_thread_lock));
       return exit_status;
     }
   }
@@ -238,7 +238,7 @@ process_exit (void)
     }
   hash_destroy(&(cur->spt->spt_hash), NULL);
   sema_up(&(cur->memory_preserve));
-  sema_down(&(cur->child_thread_lock));
+  //sema_down(&(cur->child_thread_lock));
 }
 
 /* Sets up the CPU for running user code in the current
@@ -576,7 +576,7 @@ setup_stack (void **esp)
   struct page* p =malloc(sizeof(struct page));
   p->vaddr=PHYS_BASE-PGSIZE;
   struct frame* f;
-  f=(uint8_t)get_frame(p, PAL_ZERO);
+  f=(uint8_t)get_frame(p);
   kpage=f->addr;
   if (kpage != NULL) 
     {
