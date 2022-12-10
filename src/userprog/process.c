@@ -603,6 +603,7 @@ setup_stack (void **esp)
       if (success)
         {
           *esp = PHYS_BASE;
+          thread_current()->esp_stack=PHYS_BASE - PGSIZE;
         }
       else
         frame_free (f);
