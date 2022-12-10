@@ -115,11 +115,8 @@ struct thread
     int recent_cpu; /* for mlfqs */
     struct spt_hash *spt;
     bool init_flag;
-<<<<<<< HEAD
-=======
     struct intr_frame *esp_stack;
 
->>>>>>> 0f4be22a0abb5c05fe1a9892d85dd68b6e4e8da2
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
