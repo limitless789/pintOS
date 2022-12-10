@@ -99,8 +99,10 @@ syscall_handler (struct intr_frame *f)
 
 void check_address(void* address)
 {
-  if(is_kernel_vaddr(address))
-    exit(-1);
+  if(address < 0x804800 || is_kernel_vaddr(address))
+    {
+      exit(-1);
+    }
 }
 
 void halt(void)
@@ -132,16 +134,11 @@ pid_t exec(const char* cmd_lines)
   struct file *file = NULL;
   int i;
   char filename[128];
-  char *fn_copy=palloc_get_page(0);
+  char fn_copy[32];
   for(i = 0; cmd_lines[i] != ' ' && cmd_lines[i] != '\0'; i++)
     filename[i] = cmd_lines[i];
   filename[i] = '\0';
   file = filesys_open(filename);
-  if(fn_copy==NULL)
-    {
-      palloc_free_page (fn_copy);
-      return -1;
-    }
   strlcpy (fn_copy, cmd_lines, PGSIZE);
   if(file == NULL)
     return -1;
