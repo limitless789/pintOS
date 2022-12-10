@@ -236,10 +236,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  #ifdef VM
-  if(!hash_entry(&cur->spt.pages))
-    supplemental_page_table_kill(&cur->spt);
-  #endif
+    
   hash_destroy(&(cur->spt->spt_hash), NULL);
   sema_up(&(cur->memory_preserve));
   sema_down(&(cur->child_thread_lock));
