@@ -150,6 +150,14 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
+   if(!is_kernel_vaddr(fault_addr))
+   {
+      if(expand_stack(fault_addr, f))
+         {
+            return;
+         }
+   }   
+
    bool a = lazy_load(&(thread_current()->spt->spt_hash), fault_addr);
    if(!a)
       { 

@@ -54,7 +54,10 @@ struct frame* get_frame(struct page* p)
     void* addr=palloc_get_page(PAL_USER);
     if(addr==NULL)
         //swap_out();
-        return NULL;
+        {
+            lock_release(&frame_lock);
+            return NULL;
+        }
     else{
         f->addr=addr;
         f->page_of_frame=p;
@@ -116,4 +119,27 @@ bool lazy_load(struct hash *h, void* addr)
             return false;
         }
     return true;
+}
+
+bool expand_stack(void* addr, struct intr_frame *f)
+{
+    void *esp_stack = is_kernel_vaddr(f->esp) ? thread_current()->esp_stack : f->esp;
+    struct thread *t=thread_current();
+    if(esp_stack - 4 <= addr && PHYS_BASE- 0x100000 <= addr && addr <= PHYS_BASE)
+    {
+        struct page *p=malloc(sizeof(struct page));
+        p->vaddr=pg_round_down(esp_stack);
+        struct frame *f=get_frame(p);
+        bool success;
+        memset (f->addr, 0, PGSIZE);
+        success=(  pagedir_get_page (t->pagedir, p->vaddr)== NULL && pagedir_set_page (t->pagedir, p->vaddr, f->addr, true));
+        if (success)
+        {
+            thread_current()->esp_stack -= PGSIZE;
+            return true;
+        }
+        if(! success)
+            printf("why not success?\n");
+    }
+    return false;
 }

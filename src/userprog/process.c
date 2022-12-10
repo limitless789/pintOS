@@ -605,7 +605,7 @@ setup_stack (void **esp)
           *esp = PHYS_BASE;
         }
       else
-        frame_free (find_frame(kpage));
+        frame_free (f);
     }
   return success;
 }
