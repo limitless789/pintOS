@@ -133,8 +133,6 @@ bool expand_stack(void* addr, struct intr_frame *f)
             t->esp_stack=pg_round_down(t->esp_stack);
             struct page *p=malloc(sizeof(struct page));
             p->vaddr=t->esp_stack-PGSIZE;
-            
-            printf("%p\n", p->vaddr);
             struct frame *f=get_frame(p);
             bool success;
             memset (f->addr, 0, PGSIZE);
