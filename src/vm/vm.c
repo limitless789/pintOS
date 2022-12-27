@@ -12,12 +12,6 @@
 struct list frame_table;
 struct lock frame_lock;
 
-<<<<<<< HEAD
-=======
-static bool
-install_page (void *upage, void *kpage, bool writable);
-
->>>>>>> 0f4be22a0abb5c05fe1a9892d85dd68b6e4e8da2
 void frame_init()
 {
     lock_init(&frame_lock);

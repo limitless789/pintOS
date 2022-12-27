@@ -1,10 +1,5 @@
 #include "filesys/file.h"
 #include "filesys/off_t.h"
-<<<<<<< HEAD
-=======
-#include "threads/interrupt.h"
-#include "threads/palloc.h"
->>>>>>> 0f4be22a0abb5c05fe1a9892d85dd68b6e4e8da2
 #include <list.h>
 #include <hash.h>
 #include <stdbool.h>
