@@ -125,32 +125,21 @@ bool expand_stack(void* addr, struct intr_frame *f)
 {
     void *esp_stack = is_kernel_vaddr(f->esp) ? thread_current()->esp_stack : f->esp;
     struct thread *t=thread_current();
-    if(esp_stack - 4 <= addr && PHYS_BASE- 0x800000 <= addr && addr <= PHYS_BASE)
+    if(esp_stack - 4 <= addr && PHYS_BASE- 0x100000 <= addr && addr <= PHYS_BASE)
     {
-        void *target=pg_round_down(esp_stack);
-        while(1)
+        struct page *p=malloc(sizeof(struct page));
+        p->vaddr=pg_round_down(esp_stack);
+        struct frame *f=get_frame(p);
+        bool success;
+        memset (f->addr, 0, PGSIZE);
+        success=(  pagedir_get_page (t->pagedir, p->vaddr)== NULL && pagedir_set_page (t->pagedir, p->vaddr, f->addr, true));
+        if (success)
         {
-            t->esp_stack=pg_round_down(t->esp_stack);
-            struct page *p=malloc(sizeof(struct page));
-            p->vaddr=t->esp_stack-PGSIZE;
-            
-            printf("%p\n", p->vaddr);
-            struct frame *f=get_frame(p);
-            bool success;
-            memset (f->addr, 0, PGSIZE);
-            success=( pagedir_get_page (t->pagedir, p->vaddr)== NULL && pagedir_set_page (t->pagedir, p->vaddr, f->addr, true));
-            if (success)
-            {
-                t->esp_stack -= PGSIZE;
-                if(t->esp_stack==target)
-                    return true;
-            }
-            if(!success)
-            {
-                printf("why not success?\n");
-               break;
-            }
+            thread_current()->esp_stack -= PGSIZE;
+            return true;
         }
+        if(! success)
+            printf("why not success?\n");
     }
     return false;
 }

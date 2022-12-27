@@ -115,7 +115,7 @@ struct thread
     int recent_cpu; /* for mlfqs */
     struct spt_hash *spt;
     bool init_flag;
-    void *esp_stack;
+    struct intr_frame *esp_stack;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
