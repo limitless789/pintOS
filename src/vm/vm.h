@@ -43,5 +43,3 @@ void frame_free(struct frame* f);
 
 struct spt_data* make_spt_data(struct file* f, off_t o, uint32_t r, bool w);
 bool lazy_load(struct hash *h, void* addr);
-
-bool expand_stack(void* addr, struct intr_frame *f);
